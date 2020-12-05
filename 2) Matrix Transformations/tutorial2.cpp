@@ -2,7 +2,7 @@
 #include "Renderer.h"
 
 int main() {
-	Window w("Vertex Transformation!", 800, 600, false);
+	Window w("Cyberpunk 2078", 800, 600, false);
 	if (!w.HasInitialised()) {
 		return -1;
 	}
