@@ -3,9 +3,13 @@
 # include "../nclgl/Heightmap.h"
 # include "../nclgl/Shader.h"
 # include "../nclgl/Camera.h"
+# include "../nclgl/CubeRobot.h"
+# include < algorithm > // For std :: sort ...
+
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	quad = Mesh::GenerateQuad();
+	cube = Mesh::LoadFromMeshFile("OffsetCubeY.msh"); // CUBE MESH
 
 	heightMap = new HeightMap(TEXTUREDIR "noise.png");
 
@@ -13,6 +17,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID,
 		SOIL_FLAG_MIPMAPS);
 
+	
 	//earthTex = SOIL_load_OGL_texture(
 	//	TEXTUREDIR "Barren Reds.JPG", SOIL_LOAD_AUTO,
 	//	SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
@@ -37,6 +42,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	//SetTextureRepeating(earthBump, true);
 	SetTextureRepeating(waterTex, true);
 
+	shaderCube = new Shader(
+		"LampVertex.glsl", "LampFrag.glsl");
 	reflectShader = new Shader(
 		"reflectVertex.glsl", "reflectFragment.glsl");
 	skyboxShader = new Shader(
@@ -51,6 +58,28 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	}
 
+	//Scene graph
+	root = new SceneNode();
+
+	for (int i = 0; i < 5; ++i) {
+		SceneNode* s = new SceneNode();
+		s->SetColour(Vector4(0.5f, 0.5f, 1.0f, 0.5f));
+		s->SetTransform(Matrix4::Translation(Vector3(0, 100.0f, -300.0f + 100.0f + 100 * i)));
+		s->SetModelScale(Vector3(1000.0f, 1000.0f, 1000.0f));
+		s->SetBoundingRadius(300.0f);
+		s->SetMesh(Mesh::LoadFromMeshFile("lamp.msh"));
+		root->AddChild(s);
+
+	}
+
+	root->AddChild(new CubeRobot(cube));
+
+
+
+
+
+
+
 
 	Vector3 heightmapSize = heightMap->GetHeightmapSize();
 
@@ -58,6 +87,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
 	light = new Light(heightmapSize * Vector3(0.5f, 1.5f, 0.5f),
 		Vector4(1, 1, 1, 1), heightmapSize.x);
+
+
+
 
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
@@ -79,7 +111,9 @@ Renderer ::~Renderer(void) {
 	delete skyboxShader;
 	delete lightShader;
 	delete light;
-
+	delete cube;
+	delete root;
+	delete shaderCube;
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -87,8 +121,80 @@ void Renderer::UpdateScene(float dt) {
 	viewMatrix = camera->BuildViewMatrix();
 	waterRotate += dt * 2.0f; //2 degrees a second
 	waterCycle += dt * 0.25f; // 10 units a second
+	frameFrustum.FromMatrix(projMatrix * viewMatrix);
+
+	root->Update(dt);
+
 
 }
+
+
+void Renderer::SortNodeLists() {
+	std::sort(transparentNodeList.rbegin(), // note the r!
+		transparentNodeList.rend(), // note the r!
+		SceneNode::CompareByCameraDistance);
+	std::sort(nodeList.begin(), nodeList.end(), SceneNode::CompareByCameraDistance);
+
+}
+
+
+void Renderer::DrawNodes() {
+	for (const auto& i : nodeList) {
+		DrawNode(i);
+
+	}
+	for (const auto& i : transparentNodeList) {
+		DrawNode(i);
+
+	}
+
+}
+
+
+void Renderer::DrawNode(SceneNode* n) {
+	if (n->GetMesh()) {
+		Matrix4 model = n->GetWorldTransform() *
+			Matrix4::Scale(n->GetModelScale());
+		glUniformMatrix4fv(glGetUniformLocation(
+			shaderCube->GetProgram(), 
+			"modelMatrix"), 1, false, model.values);
+
+		glUniform4fv(glGetUniformLocation(
+			shaderCube->GetProgram(), "nodeColour"), 
+			1, (float*)&n->GetColour());
+
+
+
+		n->Draw(*this);
+
+	}
+
+}
+
+void Renderer::BuildNodeLists(SceneNode* from) {
+	if (frameFrustum.InsideFrustum(*from)) {
+		Vector3 dir = from->GetWorldTransform().GetPositionVector() -
+			camera->GetPosition();
+		from->SetCameraDistance(Vector3::Dot(dir, dir));
+
+		if (from->GetColour().w < 1.0f) {
+			transparentNodeList.push_back(from);
+
+		}
+		else {
+			nodeList.push_back(from);
+
+		}
+
+	}
+
+	for (vector < SceneNode* >::const_iterator i = from->GetChildIteratorStart(); i != from->GetChildIteratorEnd(); ++i) {
+		BuildNodeLists((*i));
+
+	}
+
+}
+
 
 void Renderer::DrawSkybox() {
 	glDepthMask(GL_FALSE);
@@ -102,12 +208,28 @@ void Renderer::DrawSkybox() {
 
 }
 
+void Renderer::ClearNodeLists() {
+	transparentNodeList.clear();
+	nodeList.clear();
+
+}
 
 void Renderer::RenderScene() {
+	BuildNodeLists(root);
+	SortNodeLists();
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	DrawSkybox();
 	//DrawHeightmap();
 	DrawWater();
+
+
+	BindShader(shaderCube);
+	UpdateShaderMatrices();
+
+	glUniform1i(glGetUniformLocation(shaderCube->GetProgram(), "diffuseTex"), 0);
+	DrawNodes();
+
+	ClearNodeLists();
 
 }
 

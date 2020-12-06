@@ -2,7 +2,7 @@
 #include "Renderer.h"
 
 int main() {
-	Window w("Post Processing!", 1280, 720, false);
+	Window w("CyberPunk 2078", 1280, 720, false);
 	if (!w.HasInitialised()) {
 		return -1;
 	}
