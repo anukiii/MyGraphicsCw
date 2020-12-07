@@ -20,6 +20,8 @@ public:
 	~Camera(void) {};
 
 	void UpdateCamera(float dt = 1.0f);
+	void CameraPath(float dt = 1.0f);
+
 
 	Matrix4 BuildViewMatrix();
 
@@ -36,4 +38,5 @@ protected:
 	float yaw;
 	float pitch;
 	Vector3 position; // Set to 0 ,0 ,0 by Vector3 constructor ;)
+	float yawSway = -0.2f;
 };

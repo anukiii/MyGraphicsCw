@@ -100,7 +100,7 @@ void Renderer::DrawBuildings(SceneNode* root) {
 		s->SetColour(Vector4(1.0f, 0.3f, 0.3f, 0.5f));
 		s->SetTransform(Matrix4::Translation(Vector3(0 + 400 * i, -460,4500 )));
 		s->SetModelScale(Vector3(10, 10, 10));
-		s->SetBoundingRadius(300.0f);
+		s->SetBoundingRadius(450.0f);
 		s->SetMesh(Mesh::LoadFromMeshFile("building_1.msh"));
 		root->AddChild(s);
 	}
@@ -144,7 +144,7 @@ void Renderer::UpdateScene(float dt) {
 
 
 }void Renderer::UpdateSceneAuto(float dt) {
-	//camera->UpdateCamera(dt);
+	camera->CameraPath(dt);
 	viewMatrix = camera->BuildViewMatrix();
 	waterRotate += dt * 2.0f; //2 degrees a second
 	waterCycle += dt * 0.25f; // 10 units a second

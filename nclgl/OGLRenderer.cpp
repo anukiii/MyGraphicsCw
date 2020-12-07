@@ -196,6 +196,9 @@ void OGLRenderer::UpdateScene(float msec)	{
 
 }
 
+void OGLRenderer::UpdateSceneAuto(float msec){
+}
+
 /*
 Updates the uniform matrices of the current shader. Assumes that
 the shader has uniform matrices called modelMatrix, viewMatrix,

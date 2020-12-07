@@ -16,8 +16,10 @@ int main() {
 
 	w.LockMouseToWindow(true);
 	w.ShowOSPointer(false);
-	while (!Window::GetKeyboard()->KeyDown(KEYBOARD_SPACE) && !Window::GetKeyboard()->KeyDown(KEYBOARD_ESCAPE)) {
-		renderer.UpdateScene(w.GetTimer()->GetTimeDeltaSeconds());
+
+
+	while (w.UpdateWindow() && !Window::GetKeyboard()->KeyDown(KEYBOARD_Q)) {
+		renderer.UpdateSceneAuto(w.GetTimer()->GetTimeDeltaSeconds());
 		renderer.RenderScene();
 		renderer.SwapBuffers();
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_F5)) {
@@ -25,6 +27,7 @@ int main() {
 		}
 	}
 	while (w.UpdateWindow() && !Window::GetKeyboard()->KeyDown(KEYBOARD_ESCAPE)) {
+
 		renderer.UpdateScene(w.GetTimer()->GetTimeDeltaSeconds());
 		renderer.RenderScene();
 		renderer.SwapBuffers();
@@ -32,6 +35,6 @@ int main() {
 			Shader::ReloadAllShaders();
 		}
 	}
-	//std::cin.ignore();
+
 	return 0;
 }
