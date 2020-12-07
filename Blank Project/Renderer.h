@@ -12,6 +12,7 @@ public:
 	~Renderer(void);
 	void RenderScene() override;
 	void UpdateScene(float dt) override;
+	void UpdateSceneAuto(float dt) override;
 
 protected:
 	void DrawHeightmap(); // For skybox + water
@@ -23,10 +24,12 @@ protected:
 	void ClearNodeLists();
 	void DrawNodes();
 	void DrawNode(SceneNode* n);
+	void DrawLamps(SceneNode* root);
+	void DrawBuildings(SceneNode* root);
 
 	SceneNode* root;
 	Mesh* cube;
-	Shader* shaderCube;
+
 	Frustum frameFrustum;
 	vector < SceneNode* > transparentNodeList;
 	vector < SceneNode* > nodeList;
@@ -35,6 +38,8 @@ protected:
 	Shader* lightShader;
 	Shader* reflectShader;
 	Shader* skyboxShader;
+	Shader* lampShader;
+	Shader* buildingShader;
 
 	HeightMap* heightMap;
 	Mesh* quad;

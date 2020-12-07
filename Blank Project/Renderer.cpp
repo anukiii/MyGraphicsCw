@@ -13,18 +13,18 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	heightMap = new HeightMap(TEXTUREDIR "noise.png");
 
-	waterTex = SOIL_load_OGL_texture(TEXTUREDIR "water.TGA",
+	waterTex = SOIL_load_OGL_texture(TEXTUREDIR "stainedglass.TGA",
 		SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID,
 		SOIL_FLAG_MIPMAPS);
 
 	
-	//earthTex = SOIL_load_OGL_texture(
-	//	TEXTUREDIR "Barren Reds.JPG", SOIL_LOAD_AUTO,
-	//	SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	earthTex = SOIL_load_OGL_texture(
+	TEXTUREDIR "grid.JPG", SOIL_LOAD_AUTO,
+	SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
-	//earthBump = SOIL_load_OGL_texture(
-	//	TEXTUREDIR "Barren RedsDOT3.JPG", SOIL_LOAD_AUTO,
-	//	SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	earthBump = SOIL_load_OGL_texture(
+	TEXTUREDIR "gridMap_2.jpg", SOIL_LOAD_AUTO,
+	SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 
 	cubeMap = SOIL_load_OGL_cubemap(
 		TEXTUREDIR "px.png", TEXTUREDIR "nx.png",
@@ -32,17 +32,19 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		TEXTUREDIR "pz.png", TEXTUREDIR "nz.png",
 		SOIL_LOAD_RGB, SOIL_CREATE_NEW_ID, 0);
 
-	if (/*!earthTex || !earthBump || */!cubeMap || !waterTex) {
+	if (!earthTex || !earthBump || !cubeMap || !waterTex) {
 		return;
 
 	}
 
 
-	//SetTextureRepeating(earthTex, true);
-	//SetTextureRepeating(earthBump, true);
+	SetTextureRepeating(earthTex, true);
+	SetTextureRepeating(earthBump, true);
 	SetTextureRepeating(waterTex, true);
 
-	shaderCube = new Shader(
+	lampShader = new Shader(
+		"LampVertex.glsl", "LampFrag.glsl");
+	buildingShader = new Shader(
 		"LampVertex.glsl", "LampFrag.glsl");
 	reflectShader = new Shader(
 		"reflectVertex.glsl", "reflectFragment.glsl");
@@ -60,31 +62,17 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	//Scene graph
 	root = new SceneNode();
-
-	for (int i = 0; i < 5; ++i) {
-		SceneNode* s = new SceneNode();
-		s->SetColour(Vector4(0.5f, 0.5f, 1.0f, 0.5f));
-		s->SetTransform(Matrix4::Translation(Vector3(0, 100.0f, -300.0f + 100.0f + 100 * i)));
-		s->SetModelScale(Vector3(1000.0f, 1000.0f, 1000.0f));
-		s->SetBoundingRadius(300.0f);
-		s->SetMesh(Mesh::LoadFromMeshFile("lamp.msh"));
-		root->AddChild(s);
-
-	}
-
-	root->AddChild(new CubeRobot(cube));
-
-
-
-
-
-
+	DrawLamps(root);
+	DrawBuildings(root);
+	
+	
+	//root->AddChild(new CubeRobot(cube));
 
 
 	Vector3 heightmapSize = heightMap->GetHeightmapSize();
 
 	camera = new Camera(-45.0f, 0.0f,
-		heightmapSize * Vector3(0.5f, 5.0f, 0.5f));
+		Vector3(2100.0f, -430.0f, 7000.0f));
 	light = new Light(heightmapSize * Vector3(0.5f, 1.5f, 0.5f),
 		Vector4(1, 1, 1, 1), heightmapSize.x);
 
@@ -103,6 +91,34 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	init = true;
 }
 
+
+
+void Renderer::DrawBuildings(SceneNode* root) {
+
+	for (int i = 0; i < 10; ++i) {
+		SceneNode* s = new SceneNode();
+		s->SetColour(Vector4(1.0f, 0.3f, 0.3f, 0.5f));
+		s->SetTransform(Matrix4::Translation(Vector3(0 + 400 * i, -460,4500 )));
+		s->SetModelScale(Vector3(10, 10, 10));
+		s->SetBoundingRadius(300.0f);
+		s->SetMesh(Mesh::LoadFromMeshFile("building_1.msh"));
+		root->AddChild(s);
+	}
+
+}
+
+void Renderer::DrawLamps(SceneNode *root) {
+	for (int i = 0; i < 5; ++i) {
+		SceneNode* s = new SceneNode();
+		s->SetColour(Vector4(0.5f, 0.5f, 1.0f, 0.5f));
+		s->SetTransform(Matrix4::Translation(Vector3(0, 100.0f, -300.0f + 100.0f + 100 * i)));
+		s->SetModelScale(Vector3(1000.0f, 1000.0f, 1000.0f));
+		s->SetBoundingRadius(300.0f);
+		s->SetMesh(Mesh::LoadFromMeshFile("lamp.msh"));
+		root->AddChild(s);
+	}
+}
+
 Renderer ::~Renderer(void) {
 	delete camera;
 	delete heightMap;
@@ -113,11 +129,22 @@ Renderer ::~Renderer(void) {
 	delete light;
 	delete cube;
 	delete root;
-	delete shaderCube;
+	delete lampShader;
+	delete buildingShader;
 }
 
 void Renderer::UpdateScene(float dt) {
 	camera->UpdateCamera(dt);
+	viewMatrix = camera->BuildViewMatrix();
+	waterRotate += dt * 2.0f; //2 degrees a second
+	waterCycle += dt * 0.25f; // 10 units a second
+	frameFrustum.FromMatrix(projMatrix * viewMatrix);
+
+	root->Update(dt);
+
+
+}void Renderer::UpdateSceneAuto(float dt) {
+	//camera->UpdateCamera(dt);
 	viewMatrix = camera->BuildViewMatrix();
 	waterRotate += dt * 2.0f; //2 degrees a second
 	waterCycle += dt * 0.25f; // 10 units a second
@@ -156,11 +183,11 @@ void Renderer::DrawNode(SceneNode* n) {
 		Matrix4 model = n->GetWorldTransform() *
 			Matrix4::Scale(n->GetModelScale());
 		glUniformMatrix4fv(glGetUniformLocation(
-			shaderCube->GetProgram(), 
+			lampShader->GetProgram(), 
 			"modelMatrix"), 1, false, model.values);
 
 		glUniform4fv(glGetUniformLocation(
-			shaderCube->GetProgram(), "nodeColour"), 
+			lampShader->GetProgram(), "nodeColour"), 
 			1, (float*)&n->GetColour());
 
 
@@ -219,14 +246,14 @@ void Renderer::RenderScene() {
 	SortNodeLists();
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 	DrawSkybox();
-	//DrawHeightmap();
+	DrawHeightmap();
 	DrawWater();
 
 
-	BindShader(shaderCube);
+	BindShader(lampShader);
 	UpdateShaderMatrices();
 
-	glUniform1i(glGetUniformLocation(shaderCube->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(lampShader->GetProgram(), "diffuseTex"), 0);
 	DrawNodes();
 
 	ClearNodeLists();
@@ -254,7 +281,7 @@ void Renderer::DrawHeightmap() {											//NOT USED
 
 	modelMatrix.ToIdentity(); // New !
 	textureMatrix.ToIdentity(); // New !
-
+	modelMatrix = modelMatrix * Matrix4::Rotation(10, Vector3(1, 0, 0));
 	UpdateShaderMatrices();
 
 	heightMap->Draw();
@@ -282,8 +309,8 @@ void Renderer::DrawWater() {
 	Vector3 hSize = heightMap->GetHeightmapSize();
 
 	modelMatrix =
-		Matrix4::Translation(hSize * 0.5f) *
-		Matrix4::Scale(hSize * 0.5f) *
+		Matrix4::Translation(Vector3(+2050,-500,5000)) *
+		Matrix4::Scale(hSize ) *
 		Matrix4::Rotation(90, Vector3(1, 0, 0));
 
 	textureMatrix =
@@ -292,6 +319,6 @@ void Renderer::DrawWater() {
 		Matrix4::Rotation(waterRotate, Vector3(0, 0, 1));
 
 	UpdateShaderMatrices();
-	// SetShaderLight (* light ); // No lighting in this shader !
+	//SetShaderLight (* light ); // No lighting in this shader !
 	quad->Draw();
 }

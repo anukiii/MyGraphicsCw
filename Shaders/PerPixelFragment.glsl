@@ -30,9 +30,14 @@ void main ( void ) {
 	specFactor = pow ( specFactor , 60.0 );
 
 	vec3 surface = ( diffuse.rgb * lightColour.rgb );
+	
 
 	fragColour.rgb = surface * lambert * attenuation ;
 	fragColour.rgb += ( lightColour.rgb * specFactor )* attenuation *0.33;
 	fragColour.rgb += surface * 0.1f ; // ambient !
 	fragColour.a = diffuse.a ;
+	fragColour.r *=(IN.worldPos.z/1000);
+	fragColour.b *=(IN.worldPos.z/1000);
+	
+
 }
