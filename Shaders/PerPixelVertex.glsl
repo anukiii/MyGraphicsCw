@@ -5,7 +5,7 @@ uniform mat4 projMatrix ;
 
 in vec3 position ;
 in vec4 colour ;
-in vec3 normal ; // New Attribute !
+in vec3 normal ;
 in vec2 texCoord ;
 
 out Vertex {

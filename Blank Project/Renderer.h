@@ -2,6 +2,8 @@
 # include "../nclgl/OGLRenderer.h"
 # include "../nclgl/SceneNode.h"
 # include "../nclgl/Frustum.h"
+#include "../nclgl\MeshAnimation.h"
+#include "../nclgl\MeshMaterial.h"
 class Camera;
 class Shader;
 class HeightMap;
@@ -26,6 +28,10 @@ protected:
 	void DrawNode(SceneNode* n);
 	void DrawLamps(SceneNode* root);
 	void DrawBuildings(SceneNode* root);
+	void BindBuildings();
+	void BindLamps();
+	void MakeMan();
+	void DrawMan();
 
 	SceneNode* root;
 	Mesh* cube;
@@ -52,6 +58,16 @@ protected:
 	GLuint waterTex;
 	GLuint earthTex;
 	GLuint earthBump;
+	
+	Mesh* manMesh;
+	Shader* manShader;
+	MeshAnimation* anim;
+	MeshMaterial* material;
+	vector < GLuint > matTextures;
+
+	int currentFrame;
+	float frameTime;
+	
 
 	float waterRotate;
 	float waterCycle;
