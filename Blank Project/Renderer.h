@@ -28,12 +28,10 @@ protected:
 	void DrawNode(SceneNode* n);
 	void DrawLamps(SceneNode* root);
 	void DrawBuildings(SceneNode* root);
-	void BindBuildings();
 	void BindLamps();
 	void MakeMan();
 	void DrawMan();
 
-	void GenerateScreenTexture(GLuint& into, bool depth = false);
 
 	SceneNode* root;
 	Mesh* cube;
@@ -47,12 +45,10 @@ protected:
 	Shader* reflectShader;
 	Shader* skyboxShader;
 	Shader* lampShader;
-	Shader* buildingShader;
 
 	HeightMap* heightMap;
 	Mesh* quad;
-	Mesh* quad1;
-	Mesh* quad2;
+
 
 
 
@@ -64,8 +60,7 @@ protected:
 	GLuint earthTex;
 	GLuint earthBump;
 	GLuint moonTex;
-	Shader* pointlightShader; // Shader to calculate lighting
-	Shader* combineShader; // shader to stick it all together
+
 
 	
 	GLuint bufferDepthTex;
@@ -77,6 +72,7 @@ protected:
 	Shader * processShader;
 	Shader * HDRShader;
 	Shader * CGShader;
+	Shader * shadowShader;
 
 
 	Mesh* manMesh;

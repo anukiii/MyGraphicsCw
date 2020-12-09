@@ -66,8 +66,9 @@ void Camera::CameraPath(float dt) {
 	Vector3 right = rotation * Vector3(1, 0, 0);
 	float speed = 100.0f * dt;
 
-	pitch = 0;
-
+	
+	
+	if (direction ==1) {
 	if (yaw < -30.0f) {							//RESETS YAW ONCE FULL ROTATION COMPLETE
 		yaw =-30.0f;
 
@@ -80,14 +81,39 @@ void Camera::CameraPath(float dt) {
 		yawSway *= -1;
 	}
 	yaw += yawSway;
+	pitch += yawSway;
 
 
 
 
 	pitch = std::min(pitch, 90.0f);
 	pitch = std::max(pitch, -90.0f);
-	if (position.z >4400 ) {
-		position += forward * speed;
+
+	position += forward * speed;
+	if (position.z < 4400) {
+		direction = -1;
+	}
+	}
+	if (direction ==-1) {
+		if (yaw < 30.0f) {							//RESETS YAW ONCE FULL ROTATION COMPLETE
+			yaw = 30.0f;
+
+		}
+		if (yaw > 60.0f) {
+			yaw = 60.0f;
+
+		}
+		if (yaw == 30.0f || yaw == 60.0f) {
+			yawSway *= -1;
+		}
+		yaw += yawSway;
+
+		//if (pitch < 50) {
+			pitch -= yawSway;
+		//}
+		position -= forward * speed;
+
+
 	}
 
 }

@@ -11,9 +11,8 @@ const int POST_PASSES = 10;
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	quad = Mesh::GenerateQuad();
-	quad1 = Mesh::GenerateQuad();
-	quad2 = Mesh::GenerateQuad();
-	cube = Mesh::LoadFromMeshFile("OffsetCubeY.msh"); // CUBE MESH
+
+	cube = Mesh::LoadFromMeshFile("OffsetCubeY.msh");
 
 	heightMap = new HeightMap(TEXTUREDIR "noise.png");
 
@@ -50,6 +49,7 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(earthBump, true);
 	SetTextureRepeating(waterTex, true);
 
+	//post processing stuff
 	sceneShader = new Shader(
 		"TexturedVertex.glsl", "TexturedFragment.glsl");
 	processShader = new Shader(
@@ -58,6 +58,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		"TexturedVertex.glsl", "HDRFrag.glsl");
 	CGShader = new Shader(
 		"TexturedVertex.glsl", "ColorGradeFrag.glsl");
+	shadowShader = new Shader(
+		"shadowVert.glsl", "shadowFrag.glsl");
+
 
 	manShader = new Shader(
 		"SkinningVertex.glsl", "PerPixelFragment.glsl");
@@ -74,7 +77,12 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		!skyboxShader->LoadSuccess() ||
 		!lightShader->LoadSuccess()||
 		!lampShader->LoadSuccess()||
-		!manShader->LoadSuccess()) {
+		!manShader->LoadSuccess()||
+		!sceneShader->LoadSuccess()||
+		!processShader->LoadSuccess()||
+		!HDRShader->LoadSuccess()||
+		!CGShader->LoadSuccess()||
+		!shadowShader->LoadSuccess()){
 		return;
 
 	}
@@ -88,15 +96,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	DrawBuildings(root);
 	
 	
-	//root->AddChild(new CubeRobot(cube));
 	MakeMan();
 
 	Vector3 heightmapSize = heightMap->GetHeightmapSize();
 
-	camera = new Camera(-45.0f, 0.0f,
+	camera = new Camera(0.0f, 0.0f,
 		Vector3(2100.0f, -430.0f, 10000.0f));
 	light = new Light(Vector3(2000.0f,2000.0f, 6000.0f),
-		Vector4(1, 1, 1, 1), 50000);
+		Vector4(1, 1, 1, 1), 5000);
 
 	
 
@@ -104,7 +111,8 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 		(float)width / (float)height, 45.0f);
 
 
-	// Generate our scene depth texture ...
+
+
 	glGenTextures(1, &bufferDepthTex);
 	glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -125,14 +133,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	}
 
-	glGenFramebuffers(1, &bufferFBO); // We ’ll render the scene into this
-	glGenFramebuffers(1, &processFBO); // And do post processing in this
+	glGenFramebuffers(1, &bufferFBO);
+	glGenFramebuffers(1, &processFBO); 
 
 	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, bufferDepthTex, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, bufferDepthTex, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[0], 0);
-	// We can check FBO attachment success using this command !
+
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex || !bufferColourTex[0]) {
 		return;
 
@@ -196,7 +204,8 @@ void Renderer::DrawBuildings(SceneNode* root) {
 
 
 void Renderer::DrawLamps(SceneNode *root) {
-	//evey loop has to make 
+
+
 	for (int i = 0; i < 10; ++i) {
 		SceneNode* s = new SceneNode();
 		s->SetColour(Vector4(0.5f, 0.5f, 1.0f, 0.5f));
@@ -220,16 +229,26 @@ Renderer ::~Renderer(void) {
 	delete camera;
 	delete heightMap;
 	delete quad;
-	delete quad1;
-	delete quad2;
+
 	delete reflectShader;
 	delete skyboxShader;
 	delete lightShader;
+	delete manShader;
+	delete lampShader;
+	delete sceneShader;
+	delete processShader;
+	delete HDRShader;
+	delete CGShader;
+
+	delete manMesh;
+	delete anim;
+	delete material;
+
 	delete light;
 	delete cube;
 	delete root;
-	delete lampShader;
-	delete buildingShader;
+
+
 
 	glDeleteTextures(2, bufferColourTex);
 	glDeleteTextures(1, &bufferDepthTex);
@@ -251,8 +270,8 @@ void Renderer::UpdateScene(float dt) {
 	}
 
 
-	waterRotate += dt * 2.0f; //2 degrees a second
-	waterCycle += dt * 0.25f; // 10 units a second
+	waterRotate += dt * 2.0f;
+	waterCycle += dt * 0.25f;
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
 
 	root->Update(dt);
@@ -276,8 +295,8 @@ void Renderer::UpdateSceneAuto(float dt) {
 	}
 
 
-	waterRotate += dt * 2.0f; //2 degrees a second
-	waterCycle += dt * 0.25f; // 10 units a second
+	waterRotate += dt * 2.0f;
+	waterCycle += dt * 0.25f;
 	frameFrustum.FromMatrix(projMatrix * viewMatrix);
 
 	root->Update(dt);
@@ -287,8 +306,8 @@ void Renderer::UpdateSceneAuto(float dt) {
 
 
 void Renderer::SortNodeLists() {
-	std::sort(transparentNodeList.rbegin(), // note the r!
-		transparentNodeList.rend(), // note the r!
+	std::sort(transparentNodeList.rbegin(),
+		transparentNodeList.rend(), 
 		SceneNode::CompareByCameraDistance);
 	std::sort(nodeList.begin(), nodeList.end(), SceneNode::CompareByCameraDistance);
 
@@ -367,7 +386,7 @@ void Renderer::DrawSkybox() {
 
 	UpdateShaderMatrices();
 
-	quad1->Draw();
+	quad->Draw();
 
 	glDepthMask(GL_TRUE);
 
@@ -439,7 +458,7 @@ void Renderer::RenderScene() {
 		
 			glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
 			quad->Draw();
-			// Now to swap the colour buffers , and do the second blur pass
+			
 			glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
 			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[0], 0);
 			glBindTexture(GL_TEXTURE_2D, bufferColourTex[1]);
@@ -533,18 +552,11 @@ void Renderer::BindLamps() {
 	UpdateShaderMatrices();
 
 	glUniform1i(glGetUniformLocation(lampShader->GetProgram(), "diffuseTex"), 0);
+	glUniform1i(glGetUniformLocation(sceneShader -> GetProgram(),
+		" shadowTex "), 2);
 
 }
 
-void Renderer::BindBuildings(){
-
-
-	BindShader(buildingShader);
-	UpdateShaderMatrices();
-
-	glUniform1i(glGetUniformLocation(buildingShader->GetProgram(), "diffuseTex"), 0);
-	
-}
 
 void Renderer::DrawHeightmap() {		
 	BindShader(lightShader);
@@ -605,7 +617,7 @@ void Renderer::DrawWater() {
 		Matrix4::Rotation(waterRotate, Vector3(0, 0, 1));
 	
 	UpdateShaderMatrices();
-	quad2->Draw();
+	quad->Draw();
 
 }
 

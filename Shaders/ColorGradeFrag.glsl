@@ -12,8 +12,8 @@ out vec4 fragColor ;
 
 void main ( void ) {
 	fragColor = texture ( diffuseTex , IN . texCoord );
-   fragColor.r *=   0.3;
-   fragColor.g *=  0.59;
-   fragColor.b *=  0.11;
+	float greyScale = fragColor.r * 0.3 + fragColor.g * 0.59 + fragColor.b * 0.11;
+	fragColor.rgb = vec3(greyScale, greyScale, greyScale);
+
 
 }

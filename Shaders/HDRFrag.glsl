@@ -13,14 +13,14 @@ out vec4 fragColor ;
 void main ( void ) {
 	fragColor = texture ( diffuseTex , IN . texCoord );
 
-	if (fragColor.r>0.8){
-	fragColor.r +=0.1;
+	if (fragColor.r>0.7){
+	fragColor.r =1;
 	}
 	if (fragColor.b>0.8){
-	fragColor.b +=0.1;
+	fragColor.b =1;
 	}
 	if (fragColor.g>0.8){
-	fragColor.g +=0.1;
+	fragColor.g =1;
 	}
 
 }
