@@ -15,7 +15,7 @@ public:
 	void RenderScene() override;
 	void UpdateScene(float dt) override;
 	void UpdateSceneAuto(float dt) override;
-
+	void SetPostProcessingType(int i) { postProcessingType = i; }
 protected:
 	void DrawHeightmap(); // For skybox + water
 	void DrawWater();
@@ -75,6 +75,8 @@ protected:
 
 	Shader* sceneShader;
 	Shader * processShader;
+	Shader * HDRShader;
+	Shader * CGShader;
 
 
 	Mesh* manMesh;
@@ -89,5 +91,8 @@ protected:
 
 	float waterRotate;
 	float waterCycle;
+
+	int postProcessingType;
+
 
 };

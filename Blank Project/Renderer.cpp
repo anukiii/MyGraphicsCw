@@ -50,9 +50,14 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(earthBump, true);
 	SetTextureRepeating(waterTex, true);
 
-	sceneShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
-	processShader = new Shader("TexturedVertex.glsl", "processfrag.glsl");
-
+	sceneShader = new Shader(
+		"TexturedVertex.glsl", "TexturedFragment.glsl");
+	processShader = new Shader(
+		"TexturedVertex.glsl", "processfrag.glsl");
+	HDRShader = new Shader(
+		"TexturedVertex.glsl", "HDRFrag.glsl");
+	CGShader = new Shader(
+		"TexturedVertex.glsl", "ColorGradeFrag.glsl");
 
 	manShader = new Shader(
 		"SkinningVertex.glsl", "PerPixelFragment.glsl");
@@ -412,38 +417,94 @@ void Renderer::RenderScene() {
 
 
 
+	if (postProcessingType == 1) {
+
+		glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		
+		BindShader(processShader);
+		modelMatrix.ToIdentity();
+		viewMatrix.ToIdentity();
+		projMatrix.ToIdentity();
+		UpdateShaderMatrices();
+		
+		glDisable(GL_DEPTH_TEST);
+
+		glActiveTexture(GL_TEXTURE0);
+		glUniform1i(glGetUniformLocation(processShader->GetProgram(), "sceneTex"), 0);
+		for (int i = 0; i < POST_PASSES; ++i) {
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
+			glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
+		
+			glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
+			quad->Draw();
+			// Now to swap the colour buffers , and do the second blur pass
+			glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[0], 0);
+			glBindTexture(GL_TEXTURE_2D, bufferColourTex[1]);
+			quad->Draw();
+
+		}
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glEnable(GL_DEPTH_TEST);
+	}
+	if (postProcessingType == 2) {
+		glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+		BindShader(HDRShader);
+		modelMatrix.ToIdentity();
+		viewMatrix.ToIdentity();
+		projMatrix.ToIdentity();
+		UpdateShaderMatrices();
+
+		glDisable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE0);
+		glUniform1i(glGetUniformLocation(HDRShader->GetProgram(), "diffuseTex"), 0);
+
+			
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
+			glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
+			quad->Draw();
 
 
-	//glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
-	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
-	//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[0], 0);
+			glBindTexture(GL_TEXTURE_2D, bufferColourTex[1]);
+			quad->Draw();
 
-	//BindShader(processShader);
-	//modelMatrix.ToIdentity();
-	//viewMatrix.ToIdentity();
-	//projMatrix.ToIdentity();
-	//UpdateShaderMatrices();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glEnable(GL_DEPTH_TEST);
+	}
+	if (postProcessingType == 3) {
+		glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
+		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-	//glDisable(GL_DEPTH_TEST);
+		BindShader(CGShader);
+		modelMatrix.ToIdentity();
+		viewMatrix.ToIdentity();
+		projMatrix.ToIdentity();
+		UpdateShaderMatrices();
 
-	//glActiveTexture(GL_TEXTURE0);
-	//glUniform1i(glGetUniformLocation(processShader->GetProgram(), "sceneTex"), 0);
-	//for (int i = 0; i < POST_PASSES; ++i) {
-	//	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
-	//	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
+		glDisable(GL_DEPTH_TEST);
+		glActiveTexture(GL_TEXTURE0);
+		glUniform1i(glGetUniformLocation(CGShader->GetProgram(), "diffuseTex"), 0);
 
-	//	glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
-	//	quad->Draw();
-	//	// Now to swap the colour buffers , and do the second blur pass
-	//	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
-	//	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[0], 0);
-	//	glBindTexture(GL_TEXTURE_2D, bufferColourTex[1]);
-	//	quad->Draw();
 
-	//}
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	//glEnable(GL_DEPTH_TEST);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
+		glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
+		quad->Draw();
 
+
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[0], 0);
+		glBindTexture(GL_TEXTURE_2D, bufferColourTex[1]);
+		quad->Draw();
+
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glEnable(GL_DEPTH_TEST);
+	}
 
 
 

@@ -18,10 +18,22 @@ int main() {
 	w.ShowOSPointer(false);
 
 
-	while (w.UpdateWindow() && !Window::GetKeyboard()->KeyDown(KEYBOARD_Q)) {
+	while (w.UpdateWindow() && !Window::GetKeyboard()->KeyDown(KEYBOARD_Q) && !Window::GetKeyboard()->KeyDown(KEYBOARD_ESCAPE)) {
 		renderer.UpdateSceneAuto(w.GetTimer()->GetTimeDeltaSeconds());
 		renderer.RenderScene();
 		renderer.SwapBuffers();
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_0)) {
+			renderer.SetPostProcessingType(0);
+		}
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_1)) {
+			renderer.SetPostProcessingType(1);
+		}
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_2)) {
+			renderer.SetPostProcessingType(2);
+		}		
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_3)) {
+			renderer.SetPostProcessingType(3);
+		}
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_F5)) {
 			Shader::ReloadAllShaders();
 		}
@@ -31,6 +43,18 @@ int main() {
 		renderer.UpdateScene(w.GetTimer()->GetTimeDeltaSeconds());
 		renderer.RenderScene();
 		renderer.SwapBuffers();
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_0)) {
+			renderer.SetPostProcessingType(0);
+		}
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_1)) {
+			renderer.SetPostProcessingType(1);
+		}
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_2)) {
+			renderer.SetPostProcessingType(2);
+		}
+		if (Window::GetKeyboard()->KeyDown(KEYBOARD_3)) {
+			renderer.SetPostProcessingType(3);
+		}
 		if (Window::GetKeyboard()->KeyDown(KEYBOARD_F5)) {
 			Shader::ReloadAllShaders();
 		}

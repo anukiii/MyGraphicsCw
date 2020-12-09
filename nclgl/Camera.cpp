@@ -89,7 +89,7 @@ void Camera::CameraPath(float dt) {
 	if (position.z >4400 ) {
 		position += forward * speed;
 	}
-	std::cout << position<<' '<<yaw<<'\n';
+
 }
 
 
