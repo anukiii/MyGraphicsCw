@@ -10,8 +10,9 @@ const int POST_PASSES = 10;
 
 
 Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
+	quad = Mesh::GenerateQuad();
 	quad1 = Mesh::GenerateQuad();
-	quad1 = Mesh::GenerateQuad();
+	quad2 = Mesh::GenerateQuad();
 	cube = Mesh::LoadFromMeshFile("OffsetCubeY.msh"); // CUBE MESH
 
 	heightMap = new HeightMap(TEXTUREDIR "noise.png");
@@ -48,6 +49,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(earthTex, true);
 	SetTextureRepeating(earthBump, true);
 	SetTextureRepeating(waterTex, true);
+
+	sceneShader = new Shader("TexturedVertex.glsl", "TexturedFragment.glsl");
+	processShader = new Shader("TexturedVertex.glsl", "processfrag.glsl");
+
 
 	manShader = new Shader(
 		"SkinningVertex.glsl", "PerPixelFragment.glsl");
@@ -93,6 +98,45 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	projMatrix = Matrix4::Perspective(1.0f, 15000.0f,
 		(float)width / (float)height, 45.0f);
 
+
+	// Generate our scene depth texture ...
+	glGenTextures(1, &bufferDepthTex);
+	glBindTexture(GL_TEXTURE_2D, bufferDepthTex);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, NULL);
+
+
+	for (int i = 0; i < 2; ++i) {
+		glGenTextures(1, &bufferColourTex[i]);
+		glBindTexture(GL_TEXTURE_2D, bufferColourTex[i]);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+	}
+
+	glGenFramebuffers(1, &bufferFBO); // We ’ll render the scene into this
+	glGenFramebuffers(1, &processFBO); // And do post processing in this
+
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, bufferDepthTex, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_TEXTURE_2D, bufferDepthTex, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[0], 0);
+	// We can check FBO attachment success using this command !
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE || !bufferDepthTex || !bufferColourTex[0]) {
+		return;
+
+	}
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+
+
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -131,7 +175,7 @@ void Renderer::DrawBuildings(SceneNode* root) {
 		s->SetColour(Vector4(1.0f, 0.3f, 0.3f, 0.5f));
 		s->SetTransform(Matrix4::Translation(Vector3(0 + 400 * i, -460,4500 )));
 		s->SetModelScale(Vector3(10, 10, 10));
-		s->SetBoundingRadius(450.0f);
+		s->SetBoundingRadius(10000.0f);
 		s->SetMesh(Mesh::LoadFromMeshFile("building_1.msh"));
 		root->AddChild(s);
 	}
@@ -139,7 +183,7 @@ void Renderer::DrawBuildings(SceneNode* root) {
 	s->SetColour(Vector4(0.9f, 0.9f, 1.0f, 0.9f));
 	s->SetTransform(Matrix4::Translation(Vector3(2000.0f, 2000.0f, 6000.0f)));
 	s->SetModelScale(Vector3(200, 200, 200));
-	s->SetBoundingRadius(450.0f);
+	s->SetBoundingRadius(10000.0f);
 	s->SetMesh(Mesh::LoadFromMeshFile("Sphere.msh"));
 	s->SetTexture(moonTex);
 	root->AddChild(s);
@@ -153,14 +197,14 @@ void Renderer::DrawLamps(SceneNode *root) {
 		s->SetColour(Vector4(0.5f, 0.5f, 1.0f, 0.5f));
 		s->SetTransform(Matrix4::Translation(Vector3(2600, -500, 5000 + 300 * i)));
 		s->SetModelScale(Vector3(1000.0f, 1000.0f, 1000.0f));
-		s->SetBoundingRadius(300.0f);
+		s->SetBoundingRadius(10000.0f);
 		s->SetMesh(Mesh::LoadFromMeshFile("lamp.msh"));
 		root->AddChild(s);
 
 		SceneNode* s1 = new SceneNode();
 		s1->SetColour(Vector4(0.5f, 0.5f, 1.0f, 0.5f));
 		s1->SetModelScale(Vector3(1000.0f, 1000.0f, 1000.0f));
-		s1->SetBoundingRadius(300.0f);
+		s1->SetBoundingRadius(10000.0f);
 		s1->SetMesh(Mesh::LoadFromMeshFile("lamp.msh"));
 		s1->SetTransform(Matrix4::Translation(Vector3(2600, -500, 5000 + 300 * i))*Matrix4::Rotation(180,Vector3(0,1,0))*Matrix4::Translation(Vector3(1000,0,0)));
 		root->AddChild(s1);
@@ -172,6 +216,7 @@ Renderer ::~Renderer(void) {
 	delete heightMap;
 	delete quad;
 	delete quad1;
+	delete quad2;
 	delete reflectShader;
 	delete skyboxShader;
 	delete lightShader;
@@ -180,6 +225,12 @@ Renderer ::~Renderer(void) {
 	delete root;
 	delete lampShader;
 	delete buildingShader;
+
+	glDeleteTextures(2, bufferColourTex);
+	glDeleteTextures(1, &bufferDepthTex);
+	glDeleteFramebuffers(1, &bufferFBO);
+	glDeleteFramebuffers(1, &processFBO);
+
 }
 
 void Renderer::UpdateScene(float dt) {
@@ -308,6 +359,7 @@ void Renderer::DrawSkybox() {
 	glDepthMask(GL_FALSE);
 
 	BindShader(skyboxShader);
+
 	UpdateShaderMatrices();
 
 	quad1->Draw();
@@ -323,22 +375,92 @@ void Renderer::ClearNodeLists() {
 }
 
 
-
 void Renderer::RenderScene() {
 	BuildNodeLists(root);
 	SortNodeLists();
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, bufferFBO);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	textureMatrix.ToIdentity();
+	modelMatrix.ToIdentity();
+	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 	DrawSkybox();
-	DrawHeightmap();
+
+	textureMatrix.ToIdentity();
+	modelMatrix.ToIdentity();
+	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 	DrawWater();
+
+
+	textureMatrix.ToIdentity();
+	modelMatrix.ToIdentity();
+	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
 	DrawMan();
-	
+
+	textureMatrix.ToIdentity();
+	modelMatrix.ToIdentity();
+	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+	DrawHeightmap();
 
 	BindLamps();
-	
-
 	DrawNodes();
 	ClearNodeLists();
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
+
+
+
+
+	//glBindFramebuffer(GL_FRAMEBUFFER, processFBO);
+	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
+	//glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+	//BindShader(processShader);
+	//modelMatrix.ToIdentity();
+	//viewMatrix.ToIdentity();
+	//projMatrix.ToIdentity();
+	//UpdateShaderMatrices();
+
+	//glDisable(GL_DEPTH_TEST);
+
+	//glActiveTexture(GL_TEXTURE0);
+	//glUniform1i(glGetUniformLocation(processShader->GetProgram(), "sceneTex"), 0);
+	//for (int i = 0; i < POST_PASSES; ++i) {
+	//	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[1], 0);
+	//	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 0);
+
+	//	glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
+	//	quad->Draw();
+	//	// Now to swap the colour buffers , and do the second blur pass
+	//	glUniform1i(glGetUniformLocation(processShader->GetProgram(), "isVertical"), 1);
+	//	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, bufferColourTex[0], 0);
+	//	glBindTexture(GL_TEXTURE_2D, bufferColourTex[1]);
+	//	quad->Draw();
+
+	//}
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glEnable(GL_DEPTH_TEST);
+
+
+
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+	BindShader(sceneShader);
+	modelMatrix.ToIdentity();
+	viewMatrix.ToIdentity();
+	projMatrix.ToIdentity();
+	UpdateShaderMatrices();
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, bufferColourTex[0]);
+	glUniform1i(glGetUniformLocation(sceneShader->GetProgram(), "diffuseTex"), 0);
+	quad->Draw();
+
+
+
 }
 
 
@@ -346,6 +468,7 @@ void Renderer::BindLamps() {
 
 
 	BindShader(lampShader);
+
 	UpdateShaderMatrices();
 
 	glUniform1i(glGetUniformLocation(lampShader->GetProgram(), "diffuseTex"), 0);
@@ -409,16 +532,20 @@ void Renderer::DrawWater() {
 
 	modelMatrix =
 		Matrix4::Translation(Vector3(+2050,-500,5000)) *
-		Matrix4::Scale(hSize ) *
+		Matrix4::Scale(hSize) *
 		Matrix4::Rotation(90, Vector3(1, 0, 0));
 
+	projMatrix = Matrix4::Perspective(1.0f, 10000.0f, (float)width / (float)height, 45.0f);
+
+	
 	textureMatrix =
 		Matrix4::Translation(Vector3(waterCycle, 0.0f, waterCycle)) *
-		Matrix4::Scale(Vector3(10, 10, 10)) *
+		Matrix4::Scale(Vector3(1, 1, 1)) *
 		Matrix4::Rotation(waterRotate, Vector3(0, 0, 1));
-
+	
 	UpdateShaderMatrices();
-	quad1->Draw();
+	quad2->Draw();
+
 }
 
 

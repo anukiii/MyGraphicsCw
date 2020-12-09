@@ -52,6 +52,7 @@ protected:
 	HeightMap* heightMap;
 	Mesh* quad;
 	Mesh* quad1;
+	Mesh* quad2;
 
 
 
