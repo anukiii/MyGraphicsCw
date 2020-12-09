@@ -33,6 +33,8 @@ protected:
 	void MakeMan();
 	void DrawMan();
 
+	void GenerateScreenTexture(GLuint& into, bool depth = false);
+
 	SceneNode* root;
 	Mesh* cube;
 
@@ -49,6 +51,8 @@ protected:
 
 	HeightMap* heightMap;
 	Mesh* quad;
+	Mesh* quad1;
+
 
 
 	Light* light;
@@ -58,7 +62,20 @@ protected:
 	GLuint waterTex;
 	GLuint earthTex;
 	GLuint earthBump;
+	GLuint moonTex;
+	Shader* pointlightShader; // Shader to calculate lighting
+	Shader* combineShader; // shader to stick it all together
+
 	
+	GLuint bufferDepthTex;
+	GLuint bufferColourTex[2];
+	GLuint bufferFBO;
+	GLuint processFBO;
+
+	Shader* sceneShader;
+	Shader * processShader;
+
+
 	Mesh* manMesh;
 	Shader* manShader;
 	MeshAnimation* anim;

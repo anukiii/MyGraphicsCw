@@ -44,4 +44,6 @@ fragColour.rgb = surface * lambert * attenuation ;
 fragColour.rgb += ( lightColour.rgb * specFactor )* attenuation *0.33;
 fragColour.rgb += surface * 0.1f ;
 fragColour.a = diffuse.a ;
+//float gamma = 2.2;
+//fragColour.rgb = pow(fragColour.rgb, vec3(1.0/gamma));
 }

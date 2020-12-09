@@ -34,7 +34,7 @@ void main ( void ) {
 
 	fragColour.rgb = surface * lambert * attenuation ;
 	fragColour.rgb += ( lightColour.rgb * specFactor )* attenuation *0.33;
-	fragColour.rgb += surface * 0.2f ;
+	fragColour.rgb += surface * 0.1f ;
 	fragColour.a = diffuse.a ;
 
 	
